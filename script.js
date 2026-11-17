@@ -170,55 +170,62 @@
     });
   });
 
-  const form = document.querySelector('#inquiry-form');
-  const formStatus = document.querySelector('#form-status');
-  if (form && formStatus) {
-    form.addEventListener('submit', event => {
-      event.preventDefault();
-      formStatus.className = 'form-status';
-      formStatus.textContent = '';
-      form.querySelectorAll('[aria-invalid="true"]').forEach(field => field.removeAttribute('aria-invalid'));
+ 
+const form = document.querySelector('#inquiry-form');
+const formStatus = document.querySelector('#form-status');
 
-      if (!form.reportValidity()) {
-        const invalid = form.querySelector(':invalid');
-        if (invalid) invalid.setAttribute('aria-invalid', 'true');
-        formStatus.classList.add('is-error');
-        formStatus.textContent = 'Please complete the required fields and check the permission confirmation.';
-        if (invalid) invalid.focus();
-        return;
-      }
+if (form && formStatus) {
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
 
-      if (!CONTACT_EMAIL) {
-        formStatus.classList.add('is-error');
-        formStatus.textContent = 'The inquiry is valid, but no business email is configured yet. Set CONTACT_EMAIL in script.js to enable email submission.';
-        return;
-      }
+        formStatus.className = 'form-status';
+        formStatus.textContent = '';
 
-      const data = new FormData(form);
-      const services = data.getAll('services');
-      const fields = [
-        ['Author name', data.get('authorName')],
-        ['Email', data.get('email')],
-        ['Book title', data.get('bookTitle')],
-        ['Genre', data.get('genre')],
-        ['Description', data.get('description')],
-        ['Book cover URL', data.get('coverUrl')],
-        ['Book page URL', data.get('bookUrl')],
-        ['Author website or social profile', data.get('authorUrl')],
-        ['Services requested', services.length ? services.join(', ') : 'Not specified'],
-        ['Target audience', data.get('audience')],
-        ['Preferred timeline', data.get('timeline')],
-        ['Estimated budget', data.get('budget')],
-        ['Additional information', data.get('additional')]
-      ];
-      const body = fields.map(([label, value]) => `${label}: ${value || 'Not provided'}`).join('\n');
-      const subject = `Book promotion inquiry: ${data.get('bookTitle')}`;
-      const mailto = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      window.location.href = mailto;
-      formStatus.classList.add('is-success');
-      formStatus.textContent = 'Your email app should open with your inquiry. Please send the message there to complete submission.';
+        if (!form.reportValidity()) {
+            formStatus.classList.add('is-error');
+            formStatus.textContent =
+                'Please complete the required fields and check the permission confirmation.';
+            return;
+        }
+
+        const submitButton = form.querySelector('button[type="submit"]');
+
+        if (submitButton) submitButton.disabled = true;
+
+        formStatus.textContent = 'Sending your inquiry...';
+
+        try {
+            const response = await fetch(
+                'https://formspree.io/f/mnpdjgjy',
+                {
+                    method: 'POST',
+                    body: new FormData(form),
+                    headers: {
+                        Accept: 'application/json'
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error('Form submission failed');
+            }
+
+            formStatus.classList.add('is-success');
+            formStatus.textContent =
+                'Thank you! Your inquiry has been sent successfully. We will get back to you soon.';
+
+            form.reset();
+
+        } catch (error) {
+            formStatus.classList.add('is-error');
+            formStatus.textContent =
+                'Your inquiry could not be sent. Please try again.';
+
+        } finally {
+            if (submitButton) submitButton.disabled = false;
+        }
     });
-  }
+}
 
   const year = document.querySelector('#current-year');
   if (year) year.textContent = String(new Date().getFullYear());
